@@ -4,5 +4,3 @@
 # *     /                       module:httpmock
 #
 # ~~~~
-
-GET     /?                      Module.index
