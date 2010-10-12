@@ -25,6 +25,10 @@
     ul {
       padding: 0;
     }
+    .noItems {
+      font-style: italic;
+      color: #666;
+    }
     .state {
       padding: 5px;
       font-size: 1.2em;
@@ -60,6 +64,23 @@
     .url {
       font-family: monospace;
     }
+    .cleanCache {
+      text-align: right;
+    }
+    .cleanCache a {
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+      padding: 1px 4px;
+      -moz-border-radius: 10px;
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: #33f;
+    }
+    .cleanCache a:hover {
+      border-color: rgba(0,0,0,.5);
+    }
   </style>
 </head>
 <body>
@@ -77,11 +98,19 @@
     
     <h2>Cached URL</h2>
     <div>
+      <h3>GET</h3>
+      #{if allGetUrls}
       <ul>
-      #{list items: urls}
+      #{list items: allGetUrls}
         <li class="url"><a href="${_}">${_}</a></li>
       #{/list}
       </ul>
+      #{/if}
+      #{else}
+      <p class="noItems">No url is cached.</p>
+      #{/else}
+      <div class="cleanCache"><a href="@{cleanAllCache()}">clean all</a></div>
     </div>
+    
   </div>
 </body>

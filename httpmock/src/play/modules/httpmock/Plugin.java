@@ -24,6 +24,7 @@ public class Plugin extends PlayPlugin {
             Router.addRoute("GET", "/@httpmock/?", "httpmock.HttpMock.index");
             Router.addRoute("GET", "/@httpmock/use/{status}", "httpmock.HttpMock.setCacheRequestsUsing");
             Router.addRoute("GET", "/@httpmock/record/{status}", "httpmock.HttpMock.setCacheRequestsRecording");
+            Router.addRoute("GET", "/@httpmock/clean/all", "httpmock.HttpMock.cleanAllCache");
         }
     }
 }
