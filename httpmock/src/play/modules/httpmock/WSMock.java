@@ -1,9 +1,13 @@
 package play.modules.httpmock;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -146,7 +150,6 @@ public class WSMock extends WSAsync {
         List<Header> headers;
         Integer status;
         InputStream stream;
-        String asString;
         
         public WSCachedResponse(HttpResponse r) {
             headers = r.getHeaders();
@@ -154,17 +157,28 @@ public class WSMock extends WSAsync {
                 headersMap.put(h.name, h.value());
             status = r.getStatus();
             stream = r.getStream();
-            asString = r.getString();
         }
         
         public WSCachedResponse(File dir) {
             try {
                 stream = new FileInputStream(new File(dir, "stream"));
-                asString = IO.readContentAsString(stream);
+                status = Integer.parseInt(IO.readContentAsString(new FileInputStream(new File(dir, "status"))).trim());
                 
                 // TODO
                 headers = new ArrayList<Header>();
-                status = 200;
+                BufferedReader reader = new BufferedReader(new FileReader(new File(dir, "headers")));
+                String line = reader.readLine();
+                while(line!=null) {
+                	int indexOf = line.indexOf(": ");
+                	if(indexOf != -1) {
+                		String key = line.substring(0, indexOf);
+                		String value = line.substring(indexOf+2);
+                		headersMap.put(key, value);
+                		headers.add(new Header(key, value));
+                	}
+                	line = reader.readLine();
+                }
+                reader.close();
             }
             catch(Exception e) {
                 e.printStackTrace();
@@ -179,6 +193,14 @@ public class WSMock extends WSAsync {
         public void writeIntoDir(File dir) {
             try {
                 IO.write(stream, new File(dir, "stream"));
+                IO.writeContent(""+status, new File(dir, "status"));
+                File headersFile = new File(dir, "headers");
+                BufferedWriter writer = new BufferedWriter(new FileWriter(headersFile));
+                for(String key : headersMap.keySet()) {
+                	writer.write(key+": "+headersMap.get(key));
+                	writer.newLine();
+                }
+                writer.close();
             }
             catch(Exception e) {
                 e.printStackTrace();
@@ -208,7 +230,7 @@ public class WSMock extends WSAsync {
 
         @Override
         public String getString() {
-            return asString;
+            return IO.readContentAsString(stream);
         }
         
     }
