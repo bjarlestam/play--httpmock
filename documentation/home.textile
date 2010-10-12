@@ -1,9 +1,6 @@
 h1. What is play-httpmock ?
 
-*play-httpmock* is a "play! framework":http://playframework.org module
-allowing you to cache a WebService response to overcome connection problems (lag, denial of service, HTTP errors)
-for fast developping.
-
+*play-httpmock* is a "play! framework":http://playframework.org module allowing you to cache a WebService response to overcome connection problems (lag, denial of service, HTTP errors) for fast developping.
 So of course, it only concerns the DEV mode.
 
 h1. How to use play-httpmock ?
@@ -14,7 +11,6 @@ For example :
 @module.httpmock=${play.path}/modules/httpmock@
 
 After that, run your application in dev mode and go to */@httpmock* on your browser.
-
 You will access the administration part of the module.
 
 It's fairly straightforward :
