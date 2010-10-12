@@ -9,7 +9,6 @@ public class Plugin extends PlayPlugin {
     
     @Override
     public void onLoad() {
-        Logger.info("hello world !");
     }
     
     @Override
