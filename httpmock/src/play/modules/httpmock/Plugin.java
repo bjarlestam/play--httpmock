@@ -21,7 +21,9 @@ public class Plugin extends PlayPlugin {
     @Override
     public void onRoutesLoaded() {
         if (Play.mode == Play.Mode.DEV) {
-            Router.addRoute("GET", "/@httpmock", "httpmock.HttpMock.index");
+            Router.addRoute("GET", "/@httpmock/?", "httpmock.HttpMock.index");
+            Router.addRoute("GET", "/@httpmock/use/{status}", "httpmock.HttpMock.setCacheRequestsUsing");
+            Router.addRoute("GET", "/@httpmock/record/{status}", "httpmock.HttpMock.setCacheRequestsRecording");
         }
     }
 }

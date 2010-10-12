@@ -31,6 +31,19 @@ import play.mvc.Http.Header;
 
 public class WSMock extends WSAsync {
     
+    /**
+     * if true :
+     *   if the request is known (cached), don't query the WebService but use the cache
+     */
+    public static boolean useCacheRequests = true;
+    
+    /**
+     * if true :
+     *   if the request is new (not cached), record it in the cache
+     */
+    public static boolean recordCacheRequests = true;
+    
+    
     @Override
     public WSRequest newRequest(String url) {
         return new WSMockRequest(url);
@@ -45,8 +58,8 @@ public class WSMock extends WSAsync {
     }
     
     
-    public static File getDirByUrl(String urlStr) {
-        File dir = Play.getFile("httpmock/GET/");
+    public static File getDirByUrl(String method, String urlStr) {
+        File dir = Play.getFile("httpmock/"+method+"/");
         if(!dir.exists()) dir.mkdirs();
         try {
             URL url = new URL(urlStr);
@@ -72,22 +85,23 @@ public class WSMock extends WSAsync {
         
         private HttpResponse cachedGet() {
             HttpResponse r = null;
-            File f = getDirByUrl(url);
+            File f = getDirByUrl("GET", url);
             if(f!=null) {
                 if(!f.exists()) {
-                    f.mkdirs();
-                    Logger.debug("WSMockRequest: GET on %s : caching ...", url);
-                    r = super.get();
-                    writeResponseIntoDir(new WSCachedResponse(r), f);
+                    if(recordCacheRequests) {
+                        f.mkdirs();
+                        Logger.debug("WSMockRequest: GET on %s : caching ...", url);
+                        r = super.get();
+                        writeResponseIntoDir(new WSCachedResponse(r), f);
+                    }
                 }
-                else {
+                else if(useCacheRequests) {
                     Logger.debug("WSMockRequest: GET on %s : using cached request", url);
                     r = createResponseFrom(f);
                 }
             }
-            else {
+            if(r==null)
                 r = super.get();
-            }
             return r;
         }
         

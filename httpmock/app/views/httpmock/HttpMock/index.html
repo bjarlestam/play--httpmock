@@ -1,1 +1,87 @@
-hello world !
+<!DOCTYPE html>
+<head>
+  <title>Http Mock Managment</title>
+  <style>
+    html {
+      font-size: 80%;
+      font-family: Georgia;
+      background: #eee;
+    }
+    h1 {
+      text-align: center;
+    }
+    #wrapper > div {
+      padding-left: 40px;
+    }
+    #wrapper {
+      width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      -moz-border-radius: 10px;
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+    }
+    ul {
+      padding: 0;
+    }
+    .state {
+      padding: 5px;
+      font-size: 1.2em;
+    }
+    .state.enabled {
+      color: #0a0;
+    }
+    .state.disabled {
+      color: #a00;
+    }
+    .state .val {
+      font-weight: bold;
+      font-family: monospace;
+      font-size: 1.4em;
+      text-decoration: none;
+      color: white;
+      padding: 1px 5px;
+      margin: 0 3px;
+      -moz-border-radius: 10px;
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+      border: 2px solid rgba(0,0,0,.2);
+    }
+    .state .val:hover {
+      border-color: rgba(0,0,0,.4);
+    }
+    .state.enabled .val {
+      background: #0d0;
+    }
+    .state.disabled .val {
+      background: #f33;
+    }
+    .url {
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <h1>Http Mock Managment</h1>
+    <div>
+      <div class="state ${useCacheRequests ? 'enabled' : 'disabled'}">
+        WebService cache system is <a href="@{setCacheRequestsUsing(!useCacheRequests)}" class="val">${useCacheRequests ? 'ON' : 'OFF'}</a>
+      </div>
+      <div class="state ${recordCacheRequests ? 'enabled' : 'disabled'}">
+        Cache recording is <a href="@{setCacheRequestsRecording(!recordCacheRequests)}" class="val">${recordCacheRequests ? 'ON' : 'OFF'}</a>
+      </div>
+    </div>
+    
+    
+    <h2>Cached URL</h2>
+    <div>
+      <ul>
+      #{list items: urls}
+        <li class="url"><a href="${_}">${_}</a></li>
+      #{/list}
+      </ul>
+    </div>
+  </div>
+</body>

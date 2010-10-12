@@ -1,9 +1,9 @@
 #{extends 'main.html' /}
 #{set title:'Home' /}
 
-<h2>playframework on Twitter</h2>
+<h2>"${search}" on Twitter</h2>
 <ul>
-#{list playframeworkTwitter.asXml().entry}
+#{list twitter.asXml().entry}
     <li>
         %{ arr = _.author.uri.text().split("/"); author = arr[arr.length - 1] }%
         <a href="${_.author.uri}">${author}</a>: ${_.content.raw()}
