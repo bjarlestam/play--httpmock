@@ -19,4 +19,4 @@ You will access the administration part of the module.
 
 It's fairly straightforward :
 
-!screen.png!
+!http://github.com/gre/play-httpmock/raw/master/documentation/screen.png!
