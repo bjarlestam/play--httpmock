@@ -5,7 +5,7 @@ So of course, it only concerns the DEV mode.
 
 h1. Which play version to use ?
 
-Due to anterior restriction, the module is only compatible with a recent play version (since "this commit":http://github.com/playframework/play/commit/1f2d8bfa632cb65383322fd45d26d2b9c487f934).
+The module is compatible with play 1.1 version (>= 1.1RC2).
 
 h1. How to use play-httpmock ?
 
