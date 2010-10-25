@@ -1,7 +1,6 @@
 package controllers;
 
 import play.libs.WS;
-import play.libs.XML;
 import play.mvc.*;
 
 public class Application extends Controller {

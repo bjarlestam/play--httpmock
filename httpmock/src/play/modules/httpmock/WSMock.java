@@ -179,7 +179,8 @@ public class WSMock extends WSAsync {
         }
     }
     
-    public class WSCachedResponse extends HttpResponse implements Serializable {
+    @SuppressWarnings("serial")
+	public class WSCachedResponse extends HttpResponse implements Serializable {
         
         Map<String, String> headersMap = new HashMap<String, String>();
         List<Header> headers;

@@ -1,15 +1,6 @@
 package controllers.httpmock;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import play.Play;
-import play.libs.Files;
 import play.modules.httpmock.WSMock;
 import play.mvc.Controller;
 
