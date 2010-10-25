@@ -92,6 +92,10 @@
     .deleteUrl:hover, .cleanCache a:hover {
       border-color: rgba(0,0,0,.5);
     }
+    .infos {
+      color: #666;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -99,10 +103,12 @@
     <h1>Http Mock Managment</h1>
     <div>
       <div class="state ${useCacheRequests ? 'enabled' : 'disabled'}">
-        WebService cache system is <a href="@{setCacheRequestsUsing(!useCacheRequests)}" class="val">${useCacheRequests ? 'ON' : 'OFF'}</a>
+        <p>URL cache system is <a href="@{setCacheRequestsUsing(!useCacheRequests)}" class="val">${useCacheRequests ? 'ON' : 'OFF'}</a></p>
+        <p class="infos">Replace WebService requests by cache if available.</p>
       </div>
       <div class="state ${recordCacheRequests ? 'enabled' : 'disabled'}">
-        Cache recording is <a href="@{setCacheRequestsRecording(!recordCacheRequests)}" class="val">${recordCacheRequests ? 'ON' : 'OFF'}</a>
+        <p>URL cache recording is <a href="@{setCacheRequestsRecording(!recordCacheRequests)}" class="val">${recordCacheRequests ? 'ON' : 'OFF'}</a></p>
+        <p class="infos">Record all WebService requests into the cache.</p>
       </div>
     </div>
     
