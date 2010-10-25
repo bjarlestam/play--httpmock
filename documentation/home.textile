@@ -1,6 +1,10 @@
 h1. What is play-httpmock ?
 
-*play-httpmock* is a "play! framework":http://playframework.org module allowing you to cache WebService responses to overcome connection problems (lag, denial of service, HTTP errors) for fast developping.
+*play-httpmock* is a "play! framework":http://playframework.org module allowing you to cache WebService requests to overcome connection problems (lag, denial of service, HTTP errors) for fast developping.
+
+Concretely, using this module, when you query an API (using .get() with the WS class) the response with be cached on your file system (commit the cache as a bootstrap could be a good idea) and next time you query the same request, it will use the cache instead of the WebService.
+So all you have to do is recording all you need, and you don't need the webservice anymore for developping.
+
 So of course, it only concerns the DEV mode.
 
 h1. Which play version to use ?
