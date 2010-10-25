@@ -1,85 +1,113 @@
 package play.modules.httpmock;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import play.Logger;
 import play.Play;
-import play.libs.IO;
-import play.libs.XML;
-import play.libs.WS.HttpResponse;
-import play.libs.WS.WSRequest;
-import play.libs.ws.WSAsync;
+import play.libs.*;
+import play.libs.WS.*;
+import play.libs.ws.*;
 import play.mvc.Http.Header;
 
 public class WSMock extends WSAsync {
     
     /**
-     * if true :
-     *   if the request is known (cached), don't query the WebService but use the cache
+     * if true : if the request is known (cached), don't query the WebService but use the cache
      */
     public static boolean useCacheRequests = true;
     
     /**
-     * if true :
-     *   if the request is new (not cached), record it in the cache
+     * if true : if the request is new (not cached), record it in the cache
      */
     public static boolean recordCacheRequests = true;
-    
     
     @Override
     public WSRequest newRequest(String url) {
         return new WSMockRequest(url);
     }
 
-    public WSCachedResponse createResponseFrom(File dir) {
-        return new WSCachedResponse(dir);
+    public WSCachedResponse createResponseFrom(File file) {
+        return new WSCachedResponse(file);
     }
     
-    public void writeResponseIntoDir(WSCachedResponse response, File dir) {
-        response.writeIntoDir(dir);
+    public void writeResponseIntoFile(WSCachedResponse response, File file) throws IOException {
+    	response.writeIntoFile(file);
     }
     
-    
-    public static File getDirByUrl(String method, String urlStr) {
-        File dir = Play.getFile("httpmock/"+method+"/");
+    public static File getFileByUrl(String urlStr) {
+        File dir = Play.getFile("httpmock/");
         if(!dir.exists()) dir.mkdirs();
-        try {
-            URL url = new URL(urlStr);
-            File f = new File(dir, url.getHost()+url.getFile()+"/");
-            return f;
-        }
-        catch(MalformedURLException e) {
-            Logger.error("unable to parse url (%s)", urlStr);
-        }
-        catch(IOException e) {
-            Logger.error("unable to create new file");
-            e.printStackTrace();
-        }
-        return null;
+        return new File(dir, Codec.hexMD5(urlStr));
     }
     
+    public static File getUrlsFile() {
+    	File dir = Play.getFile("httpmock/");
+    	dir.mkdirs();
+    	return new File(dir, "urls");
+    }
+    
+    /**
+     * 
+     * @param urls : map of <md5hash, url>
+     */
+    public static void saveUrls(Map<String, String> urls) {
+    	try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(getUrlsFile()));
+			for(String key : urls.keySet()) {
+				writer.write(key+" "+urls.get(key));
+				writer.newLine();
+			}
+			writer.close();
+			retrieveUrls();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+    }
+
+	private static Map<String, String> retrieveUrls() {
+		Map<String, String> urls = new HashMap<String, String>();
+		try {
+			BufferedReader reader;
+			reader = new BufferedReader(new FileReader(getUrlsFile()));
+			String line = reader.readLine();
+			while (line != null && line.length() > 0) {
+				int indexOf = line.indexOf(" ");
+				if (indexOf != -1) {
+					String key = line.substring(0, indexOf);
+					String value = line.substring(indexOf + 1);
+					File file = Play.getFile("httpmock/" + key);
+					if (file.exists() && file.isFile())
+						urls.put(key, value);
+				}
+				line = reader.readLine();
+			}
+			reader.close();
+		} catch (FileNotFoundException e) {
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		return urls;
+    }
+    public static Map<String, String> getUrls() {
+    	return retrieveUrls();
+    }
+	public static void removeUrl(String id) {
+		Play.getFile("httpmock/"+id).delete();
+		Map<String, String> urls = getUrls();
+		urls.remove(id);
+		saveUrls(urls);
+	}
+	public static void removeUrls() {
+		File dir = Play.getFile("httpmock/");
+		if(dir.exists()) Files.deleteDirectory(dir);
+		retrieveUrls();
+	}
     
     public class WSMockRequest extends WSAsyncRequest {
         
@@ -89,14 +117,22 @@ public class WSMock extends WSAsync {
         
         private HttpResponse cachedGet() {
             HttpResponse r = null;
-            File f = getDirByUrl("GET", url);
+            File f = getFileByUrl(url);
             if(f!=null) {
                 if(!f.exists()) {
                     if(recordCacheRequests) {
-                        f.mkdirs();
-                        Logger.debug("WSMockRequest: GET on %s : caching ...", url);
                         r = super.get();
-                        writeResponseIntoDir(new WSCachedResponse(r), f);
+                        if(r!=null) {
+                        	Logger.debug("WSMockRequest: GET on %s : caching ...", url);
+                        	try {
+								writeResponseIntoFile(new WSCachedResponse(r), f);
+						        Map<String, String> urls = getUrls();
+						        urls.put(f.getName(), url);
+						        saveUrls(urls);
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+                        }
                     }
                 }
                 else if(useCacheRequests) {
@@ -141,7 +177,6 @@ public class WSMock extends WSAsync {
                 
             };
         }
-        
     }
     
     public class WSCachedResponse extends HttpResponse implements Serializable {
@@ -159,16 +194,13 @@ public class WSMock extends WSAsync {
             stream = r.getStream();
         }
         
-        public WSCachedResponse(File dir) {
+        public WSCachedResponse(File file) {
             try {
-                stream = new FileInputStream(new File(dir, "stream"));
-                status = Integer.parseInt(IO.readContentAsString(new FileInputStream(new File(dir, "status"))).trim());
-                
-                // TODO
+                status = 200;
                 headers = new ArrayList<Header>();
-                BufferedReader reader = new BufferedReader(new FileReader(new File(dir, "headers")));
+                final BufferedReader reader = new BufferedReader(new FileReader(file));
                 String line = reader.readLine();
-                while(line!=null) {
+                while(line!=null && line.length()>0) {
                 	int indexOf = line.indexOf(": ");
                 	if(indexOf != -1) {
                 		String key = line.substring(0, indexOf);
@@ -178,34 +210,27 @@ public class WSMock extends WSAsync {
                 	}
                 	line = reader.readLine();
                 }
-                reader.close();
+                stream = new InputStream() {
+					@Override
+					public int read() throws IOException {
+						return reader.read();
+					}
+				};
             }
             catch(Exception e) {
                 e.printStackTrace();
             }
-            
         }
         
-        public WSCachedResponse() {
-            
-        }
-        
-        public void writeIntoDir(File dir) {
-            try {
-                IO.write(stream, new File(dir, "stream"));
-                IO.writeContent(""+status, new File(dir, "status"));
-                File headersFile = new File(dir, "headers");
-                BufferedWriter writer = new BufferedWriter(new FileWriter(headersFile));
-                for(String key : headersMap.keySet()) {
-                	writer.write(key+": "+headersMap.get(key));
-                	writer.newLine();
-                }
-                writer.close();
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-            }
-            
+        public void writeIntoFile(File file) throws IOException {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+			for (String key : headersMap.keySet()) {
+				writer.write(key + ": " + headersMap.get(key));
+				writer.newLine();
+			}
+			writer.newLine(); // empty line separating headers and content
+			writer.write(IO.readContentAsString(stream));
+			writer.close();
         }
         
         @Override
@@ -232,7 +257,6 @@ public class WSMock extends WSAsync {
         public String getString() {
             return IO.readContentAsString(stream);
         }
-        
     }
     
 }

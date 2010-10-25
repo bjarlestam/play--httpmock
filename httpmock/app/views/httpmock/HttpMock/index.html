@@ -22,9 +22,6 @@
       -webkit-border-radius: 10px;
       border-radius: 10px;
     }
-    ul {
-      padding: 0;
-    }
     .noItems {
       font-style: italic;
       color: #666;
@@ -64,10 +61,18 @@
     .url {
       font-family: monospace;
     }
+    ul {
+      padding: 0;
+    }
+    ul li {
+      clear: both;
+      padding: 2px;
+      margin: 2px;
+    }
     .cleanCache {
       text-align: right;
     }
-    .cleanCache a {
+    .deleteUrl, .cleanCache a {
       text-decoration: none;
       color: white;
       font-weight: bold;
@@ -78,7 +83,13 @@
       border: 2px solid transparent;
       background: #33f;
     }
-    .cleanCache a:hover {
+    .deleteUrl {
+      padding: 0px 2px;
+      font-weight: normal;
+      font-size: 0.9em;
+      margin-right: 5px;
+    }
+    .deleteUrl:hover, .cleanCache a:hover {
       border-color: rgba(0,0,0,.5);
     }
   </style>
@@ -101,8 +112,14 @@
       <h3>GET</h3>
       #{if allGetUrls}
       <ul>
-      #{list items: allGetUrls}
-        <li class="url"><a href="${_}">${_}</a></li>
+      #{list items: allGetUrls.keySet()}
+        %{
+          value = allGetUrls.get(_)
+        }%
+        <li>
+          <a class="deleteUrl" href="@{httpmock.Httpmock.cleanUrl(_)}">delete</a>
+          <a class="url" href="${value}">${value}</a>
+        </li>
       #{/list}
       </ul>
       #{/if}
