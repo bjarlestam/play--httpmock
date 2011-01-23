@@ -23,5 +23,5 @@ You will access the administration part of the module.
 
 It's fairly straightforward :
 
-[[http://github.com/zenexity/play--httpmock/raw/master/documentation/screen.png]]
+"Screenshot":http://github.com/zenexity/play--httpmock/raw/master/documentation/screen.png
 !http://github.com/zenexity/play--httpmock/raw/master/documentation/screen.png!
