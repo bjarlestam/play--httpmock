@@ -10,6 +10,7 @@ import java.util.concurrent.*;
 import play.Logger;
 import play.Play;
 import play.libs.*;
+import play.libs.F.Promise;
 import play.libs.WS.*;
 import play.libs.ws.*;
 import play.mvc.Http.Header;
@@ -27,8 +28,8 @@ public class WSMock extends WSAsync {
     public static boolean recordCacheRequests = true;
     
     @Override
-    public WSRequest newRequest(String url) {
-        return new WSMockRequest(url);
+    public WSRequest newRequest(String url, String encoding) {
+        return new WSMockRequest(url, encoding);
     }
 
     public WSCachedResponse createResponseFrom(File file) {
@@ -111,8 +112,8 @@ public class WSMock extends WSAsync {
     
     public class WSMockRequest extends WSAsyncRequest {
         
-        public WSMockRequest(String url) {
-            super(url);
+        public WSMockRequest(String url, String encoding) {
+            super(url, encoding);
         }
         
         private HttpResponse cachedGet() {
@@ -151,9 +152,9 @@ public class WSMock extends WSAsync {
         }
         
         @Override
-        public Future<HttpResponse> getAsync() { 
+        public Promise<HttpResponse> getAsync() { 
             // fake getAsync to be cached
-            return new Future<HttpResponse>() {
+            return new Promise<HttpResponse>() {
                 @Override
                 public boolean cancel(boolean mayInterruptIfRunning) {
                     return false;
