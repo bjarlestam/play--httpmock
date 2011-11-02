@@ -1,19 +1,25 @@
 package play.modules.httpmock;
 
+import org.apache.commons.io.IOUtils;
+import play.Logger;
+import play.Play;
+import play.libs.Codec;
+import play.libs.F.Promise;
+import play.libs.Files;
+import play.libs.IO;
+import play.libs.WS.HttpResponse;
+import play.libs.WS.WSRequest;
+import play.libs.ws.WSAsync;
+import play.mvc.Http.Header;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
-
-import play.Logger;
-import play.Play;
-import play.libs.*;
-import play.libs.F.Promise;
-import play.libs.WS.*;
-import play.libs.ws.*;
-import play.mvc.Http.Header;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class WSMock extends WSAsync {
     
@@ -26,28 +32,38 @@ public class WSMock extends WSAsync {
      * if true : if the request is new (not cached), record it in the cache
      */
     public static boolean recordCacheRequests = true;
-    
+
     @Override
     public WSRequest newRequest(String url, String encoding) {
         return new WSMockRequest(url, encoding);
     }
 
-    public WSCachedResponse createResponseFrom(File file) {
-        return new WSCachedResponse(file);
+    public WSCachedResponse createResponseFrom(File bodyFile, File headersFile) {
+        return new WSCachedResponse(bodyFile, headersFile);
     }
     
-    public void writeResponseIntoFile(WSCachedResponse response, File file) throws IOException {
-    	response.writeIntoFile(file);
+    public void writeResponseBodyToFile(WSCachedResponse response, File file) throws IOException {
+    	response.writeBodyToFile(file);
+    }
+
+    public void writeResponseHeadersToFile(WSCachedResponse response, File file) throws IOException {
+    	response.writeHeadersToFile(file);
     }
     
     public static File getFileByUrl(String urlStr) {
-        File dir = Play.getFile("httpmock/");
+        File dir = Play.getFile(".httpmock/");
         if(!dir.exists()) dir.mkdirs();
         return new File(dir, Codec.hexMD5(urlStr));
     }
     
+    public static File getHeadersFileByUrl(String urlStr) {
+        File dir = Play.getFile(".httpmock/");
+        if(!dir.exists()) dir.mkdirs();
+        return new File(dir, Codec.hexMD5(urlStr)+"_headers");
+    }
+
     public static File getUrlsFile() {
-    	File dir = Play.getFile("httpmock/");
+    	File dir = Play.getFile(".httpmock/");
     	dir.mkdirs();
     	return new File(dir, "urls");
     }
@@ -57,23 +73,25 @@ public class WSMock extends WSAsync {
      * @param urls : map of <md5hash, url>
      */
     public static void saveUrls(Map<String, String> urls) {
+        BufferedWriter writer = null;
     	try {
-			BufferedWriter writer = new BufferedWriter(new FileWriter(getUrlsFile()));
+			writer = new BufferedWriter(new FileWriter(getUrlsFile()));
 			for(String key : urls.keySet()) {
 				writer.write(key+" "+urls.get(key));
 				writer.newLine();
 			}
-			writer.close();
 			retrieveUrls();
 		} catch (Exception e) {
-			e.printStackTrace();
-		}
+            throw new RuntimeException("failed to save urls", e);
+		} finally {
+            IOUtils.closeQuietly(writer);
+        }
     }
 
 	private static Map<String, String> retrieveUrls() {
 		Map<String, String> urls = new HashMap<String, String>();
+        BufferedReader reader = null;
 		try {
-			BufferedReader reader;
 			reader = new BufferedReader(new FileReader(getUrlsFile()));
 			String line = reader.readLine();
 			while (line != null && line.length() > 0) {
@@ -81,17 +99,19 @@ public class WSMock extends WSAsync {
 				if (indexOf != -1) {
 					String key = line.substring(0, indexOf);
 					String value = line.substring(indexOf + 1);
-					File file = Play.getFile("httpmock/" + key);
+					File file = Play.getFile(".httpmock/" + key);
 					if (file.exists() && file.isFile())
 						urls.put(key, value);
 				}
 				line = reader.readLine();
 			}
-			reader.close();
 		} catch (FileNotFoundException e) {
+            //Ignore
 		} catch (IOException e) {
-			e.printStackTrace();
-		}
+            throw new RuntimeException("failed to retrieve urls", e);
+		} finally {
+            IOUtils.closeQuietly(reader);
+        }
 		
 		return urls;
     }
@@ -99,13 +119,14 @@ public class WSMock extends WSAsync {
     	return retrieveUrls();
     }
 	public static void removeUrl(String id) {
-		Play.getFile("httpmock/"+id).delete();
+		Play.getFile(".httpmock/"+id).delete();
+        Play.getFile(".httpmock/"+id+"_headers").delete();
 		Map<String, String> urls = getUrls();
 		urls.remove(id);
 		saveUrls(urls);
 	}
 	public static void removeUrls() {
-		File dir = Play.getFile("httpmock/");
+		File dir = Play.getFile(".httpmock/");
 		if(dir.exists()) Files.deleteDirectory(dir);
 		retrieveUrls();
 	}
@@ -117,18 +138,20 @@ public class WSMock extends WSAsync {
         }
         
         private HttpResponse cachedGet() {
-            HttpResponse r = null;
-            File f = getFileByUrl(url);
-            if(f!=null) {
-                if(!f.exists()) { // TODO : maybe it's better to override cache (idea to expore)
+            HttpResponse httpResponse = null;
+            File responseBodyFile = getFileByUrl(url);
+            File responseHeadersFile = getHeadersFileByUrl(url);
+            if(responseBodyFile!=null) {
+                if(!responseBodyFile.exists()) {
                     if(recordCacheRequests) {
-                        r = super.get();
-                        if(r!=null) {
+                        httpResponse = super.get();
+                        if(httpResponse!=null) {
                         	Logger.debug("WSMockRequest: GET on %s : caching ...", url);
                         	try {
-								writeResponseIntoFile(new WSCachedResponse(r), f);
+                                writeResponseHeadersToFile(new WSCachedResponse(httpResponse), responseHeadersFile);
+								writeResponseBodyToFile(new WSCachedResponse(httpResponse), responseBodyFile);
 						        Map<String, String> urls = getUrls();
-						        urls.put(f.getName(), url);
+						        urls.put(responseBodyFile.getName(), url);
 						        saveUrls(urls);
 							} catch (IOException e) {
 								e.printStackTrace();
@@ -138,12 +161,12 @@ public class WSMock extends WSAsync {
                 }
                 else if(useCacheRequests) {
                     Logger.debug("WSMockRequest: GET on %s : using cached request", url);
-                    r = createResponseFrom(f);
+                    httpResponse = createResponseFrom(responseBodyFile, responseHeadersFile);
                 }
             }
-            if(r==null)
-                r = super.get();
-            return r;
+            if(httpResponse==null)
+                httpResponse = super.get();
+            return httpResponse;
         }
         
         @Override
@@ -187,6 +210,7 @@ public class WSMock extends WSAsync {
         List<Header> headers;
         Integer status;
         InputStream stream;
+        File bodyFile;
         
         public WSCachedResponse(HttpResponse r) {
             headers = r.getHeaders();
@@ -196,45 +220,50 @@ public class WSMock extends WSAsync {
             stream = r.getStream();
         }
         
-        public WSCachedResponse(File file) {
+        public WSCachedResponse(File bodyFile, File headersFile) {
+            BufferedReader headersFileReader = null;
             try {
                 status = 200;
                 headers = new ArrayList<Header>();
-                final BufferedReader reader = new BufferedReader(new FileReader(file));
-                String line = reader.readLine();
+                headersFileReader = new BufferedReader(new FileReader(headersFile));
+                String line = headersFileReader.readLine();
                 while(line!=null && line.length()>0) {
                 	int indexOf = line.indexOf(": ");
                 	if(indexOf != -1) {
-                		String key = line.substring(0, indexOf);
+                		String key = line.substring(0, indexOf).toLowerCase();
                 		String value = line.substring(indexOf+2);
                 		headersMap.put(key, value);
                 		headers.add(new Header(key, value));
                 	}
-                	line = reader.readLine();
+                	line = headersFileReader.readLine();
                 }
-                stream = new InputStream() {
-					@Override
-					public int read() throws IOException {
-						return reader.read();
-					}
-				};
+                this.bodyFile = bodyFile;
             }
             catch(Exception e) {
-                e.printStackTrace();
+                Logger.error("failed to create WSCachedResponse", e);
+            }
+            finally {
+                IOUtils.closeQuietly(headersFileReader);
             }
         }
         
-        public void writeIntoFile(File file) throws IOException {
-			BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-			for (String key : headersMap.keySet()) {
-				writer.write(key + ": " + headersMap.get(key));
-				writer.newLine();
-			}
-			writer.newLine(); // empty line separating headers and content
-			writer.write(IO.readContentAsString(stream));
-			writer.close();
+        public void writeBodyToFile(File file) throws IOException {
+            IO.copy(stream, new FileOutputStream(file));
         }
         
+        public void writeHeadersToFile(File file) throws IOException {
+            BufferedWriter writer = null;
+            try {
+                writer = new BufferedWriter(new FileWriter(file));
+                for (String key : headersMap.keySet()) {
+                    writer.write(key + ": " + headersMap.get(key));
+                    writer.newLine();
+                }
+            } finally {
+                writer.close();
+            }
+        }
+
         @Override
         public String getHeader(String key) {
             return headersMap.get(key);
@@ -252,7 +281,15 @@ public class WSMock extends WSAsync {
 
         @Override
         public InputStream getStream() {
-            return stream;
+            if(stream != null) {
+                return stream;
+            } else {
+                try {
+                    return new FileInputStream(bodyFile);
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException("file not found + " + bodyFile.getName(), e);
+                }
+            }
         }
 
         @Override
@@ -260,5 +297,4 @@ public class WSMock extends WSAsync {
             return IO.readContentAsString(stream);
         }
     }
-    
 }
