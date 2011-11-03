@@ -13,4 +13,8 @@ public class Application extends Controller {
         render(search, twitter);
     }
 
+    public static void image() {
+        WS.HttpResponse response = WS.url("http://www.google.se/images/logo.png").get();
+        renderBinary(response.getStream(), "logo.png", response.getContentType(), true);
+    }
 }

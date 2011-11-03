@@ -1,14 +1,21 @@
 #{extends 'main.html' /}
 #{set title:'Home' /}
 
-<h2>"${search}" on Twitter</h2>
-<ul>
-#{list twitter.asXml().entry}
-    <li>
-        %{ arr = _.author.uri.text().split("/"); author = arr[arr.length - 1] }%
-        <a href="${_.author.uri}">${author}</a>: ${_.content.raw()}
-    </li>
-#{/list}
-</ul>
+<section>
+  <h2>"${search}" on Twitter</h2>
+  <ul>
+  #{list twitter.asXml().entry}
+      <li>
+          %{ arr = _.author.uri.text().split("/"); author = arr[arr.length - 1] }%
+          <a href="${_.author.uri}">${author}</a>: ${_.content.raw()}
+      </li>
+  #{/list}
+  </ul>
+</section>
+
+<section>
+  <h2>An image</h2>
+  <img src="@{Application.image}" />
+</section>
 
 <a href="/@httpmock">Http Mock Managment</a>

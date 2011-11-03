@@ -294,7 +294,7 @@ public class WSMock extends WSAsync {
 
         @Override
         public String getString() {
-            return IO.readContentAsString(stream);
+            return IO.readContentAsString(getStream());
         }
     }
 }
